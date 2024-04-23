@@ -1,0 +1,24 @@
+version: '3'
+
+services:
+  cmp2808-rest-api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    networks:
+      - cmp2808
+  cmp-2808-mysql:
+    build: sql/.
+    environment:
+      MYSQL_ROOT_HOST: 'host.docker.internal'
+    ports:
+      - "3306:3306"
+    networks:
+      - cmp2808
+
+networks:
+  cmp2808:
