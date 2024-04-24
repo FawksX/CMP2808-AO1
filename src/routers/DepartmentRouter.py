@@ -3,7 +3,14 @@ from datetime import datetime
 
 from typing import List
 
-from ..models.Department import Department
+from ..models.department.Department import Department
+
+from ..models.department.delete import DeleteResponse
+from ..models.department.create import CreateRequest
+from ..models.department.create import CreateResponse
+from ..models.department.update import UpdateRequest
+from ..models.department.update import UpdateResponse
+
 
 from ..sql.SqlDatabaseHandler import sqlDatabaseHandler as Database
 
@@ -36,21 +43,21 @@ def get_departments():
 
 @router_departments.post(
     "/",
-    response_model=Department
+    response_model=CreateResponse
     )
-def create_department(data: Department.Create):
+def create_department(data: CreateRequest):
     return Department.create(data)
 
 @router_departments.delete(
     "/{id}",
-    response_model=Department.Delete
+    response_model=DeleteResponse
     )
 def delete_department(id: int):
     return Department.delete(id)
 
 @router_departments.put(
     "/{id}",
-    response_model=Department
+    response_model=UpdateResponse
     )
-def update_department(id: int, department: Department.Update):
+def update_department(id: int, department: UpdateRequest):
     return Department.update(id, department)

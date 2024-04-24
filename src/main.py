@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-from .routers.Customer import router_customer
-from .routers.Department import router_departments
+from .routers.CustomerRouter import router_customer
+from .routers.DepartmentRouter import router_departments
 
 app = FastAPI()
 

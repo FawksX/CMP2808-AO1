@@ -1,24 +1,19 @@
 from pydantic import BaseModel
 from datetime import datetime
 
-from ..sql.SqlDatabaseHandler import sqlDatabaseHandler as Database
+from ...sql.SqlDatabaseHandler import sqlDatabaseHandler as Database
+
+from .delete import DeleteResponse
+from .create import CreateRequest
+from .create import CreateResponse
+from .update import UpdateRequest
+from .update import UpdateResponse
 
 class Department(BaseModel):
     DepartmentID: int
     Name: str
     GroupName: str
     ModifiedDate: datetime
-
-    class Delete(BaseModel):
-        DepartmentID: int
-        RowsAffected: int
-    
-    class Update(BaseModel):
-        GroupName: str
-    
-    class Create(BaseModel):
-        Name: str
-        GroupName: str
     
     @staticmethod
     def fromId(id: int):
@@ -35,16 +30,26 @@ class Department(BaseModel):
 
     @staticmethod
     def delete(id: int):
+
+        dept_cache = Department.fromId(id)
+
+        if(dept_cache == None):
+            return DeleteResponse(False, None, None)
+
         cursor = Database.getCursor()
         cursor.execute("DELETE FROM HumanResources_Department WHERE DepartmentID = %s", (str(id),))
         Database.commit()
-        return Department.Delete(
-            DepartmentID=id, 
+
+        success = cursor.rowcount > 0
+
+        return DeleteResponse(
+            Success=success,
+            Department=dept_cache, 
             RowsAffected=cursor.rowcount
             )
     
     @staticmethod
-    def create(data: Create):
+    def create(data: CreateRequest):
         cursor = Database.getCursor()
 
         next_id = Department.get_next_id()
@@ -56,19 +61,29 @@ class Department(BaseModel):
         Database.commit()
 
         if(cursor.rowcount > 0):
-            return Department.fromId(next_id)
+            return CreateResponse(
+                Success=True,
+                Department=Department.fromId(next_id)
+            )
         else:
-            return None
+            return CreateResponse(Success=False, Department=None)
     
     @staticmethod
-    def update(id: int, data: Update):
+    def update(id: int, data: UpdateRequest):
         cursor = Database.getCursor()
 
         cursor.execute("UPDATE HumanResources_Department SET GroupName = %s, ModifiedDate = NOW() WHERE DepartmentID = %s",
                        (data.GroupName, id))
         
         Database.commit()
-        return Department.fromId(id)
+        
+        if(cursor.rowcount > 0):
+            return UpdateResponse(
+                Success=True,
+                Department=Department.fromId(id)
+            )
+        else:
+            return UpdateResponse(Success=False, Customer=None)
     
     @staticmethod
     def get_next_id():

@@ -4,7 +4,15 @@ from datetime import datetime
 
 import uuid
 
-from ..sql.SqlDatabaseHandler import sqlDatabaseHandler as Database
+from .delete import DeleteResponse
+from .create import CreateRequest
+from .create import CreateResponse
+from .update import UpdateRequest
+from .update import UpdateResponse
+
+from fastapi import HTTPException
+
+from ...sql.SqlDatabaseHandler import sqlDatabaseHandler as Database
 
 class Customer(BaseModel):
     CustomerID: int
@@ -14,21 +22,6 @@ class Customer(BaseModel):
     AccountNumber: str
     rowguid: str
     ModifiedDate: datetime
-
-    class Delete(BaseModel):
-        CustomerID: int
-        RowsAffected: int
-
-    class Create(BaseModel):
-        PersonID: Optional[int] = None
-        StoreID: Optional[int] = None
-        TerritoryID: Optional[int] = None
-
-    class Update(BaseModel):
-        PersonID: Optional[int] = None
-        StoreID: Optional[int] = None
-        TerritoryID: Optional[int] = None
-        AccountNumber: Optional[str] = None
 
     @staticmethod
     def fromId(customer_id: int):
@@ -49,17 +42,28 @@ class Customer(BaseModel):
     
     @staticmethod
     def delete(customer_id: int):
+
+        customer_cache = Customer.fromId(customer_id)
+
+        if(customer_cache == None):
+            raise HTTPException(
+                status_code=404,
+                content={"message": f"Could not find Customer {customer_id}"}
+            )
+
         cursor = Database.getCursor()
         cursor.execute("DELETE FROM Sales_Customer WHERE CustomerID = %s", (str(customer_id),))
         Database.commit()
 
-        return Customer.Delete(
-            CustomerID=customer_id, 
-            RowsAffected=cursor.rowcount
-            )
+        if cursor.rowcount > 0:
+            return DeleteResponse(
+                Success=True,
+                Customer=customer_cache, 
+                RowsAffected=cursor.rowcount
+                )
     
     @staticmethod
-    def create(data: Create):
+    def create(data: CreateRequest):
         cursor = Database.getCursor()
         next_id = Customer.get_next_id()
         accounting_number = Customer.generate_accounting_number(next_id)
@@ -71,19 +75,29 @@ class Customer(BaseModel):
         Database.commit()
 
         if(cursor.rowcount > 0):
-            return Customer.fromId(next_id)
+            return CreateResponse(
+                Success=True,
+                Customer=Customer.fromId(next_id)
+            )
         else:
-            return None
+            return CreateResponse(Success=False, Customer=None)
         
     @staticmethod
-    def update(customerId: int, customer: Update):
+    def update(customerId: int, customer: UpdateRequest):
         cursor = Database.getCursor()
 
         cursor.execute("UPDATE Sales_Customer SET PersonID = %s, StoreID = %s, TerritoryID = %s, AccountNumber = %s, ModifiedDate = NOW() WHERE CustomerID = %s",
                            (customer.PersonID, customer.StoreID, customer.TerritoryID, customer.AccountNumber, customerId,))
         
         Database.commit()
-        return Customer.fromId(customerId)
+
+        if(cursor.rowcount > 0):
+            return UpdateResponse(
+                Success=True, 
+                Customer=Customer.fromId(customerId)
+                )
+        else:
+            return UpdateResponse(Success=False, Customer=None)
 
     
     @staticmethod
